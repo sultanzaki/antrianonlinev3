@@ -126,7 +126,8 @@ model TicketSequence {
 model Ticket {
   id          String         @id @default(cuid())
   number      String // display code, e.g. "A-014"
-  sequence    Int // raw number within the day, for ordering/generation
+  sequence    Int // raw number within `date`, for ordering/generation
+  date        DateTime       @db.Date // org-local calendar day this ticket was issued on
   serviceId   String
   status      TicketStatus   @default(WAITING)
   priority    TicketPriority @default(NORMAL)
@@ -144,7 +145,7 @@ model Ticket {
   staff   Staff?        @relation("TicketStaff", fields: [staffId], references: [id])
   events  TicketEvent[]
 
-  @@unique([serviceId, createdAt, sequence])
+  @@unique([serviceId, date, sequence])
   @@index([serviceId, status, createdAt])
   @@index([status, counterId])
   @@map("tickets")

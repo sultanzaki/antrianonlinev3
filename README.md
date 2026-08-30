@@ -17,9 +17,24 @@ MVP in progress, built incrementally. Done so far:
   browser client (`src/lib/pusher/client.ts`), and shared channel/event
   contracts (`src/lib/pusher/events.ts`)
 - Seed script (`prisma/seed.ts`) with sample services/counters/admin
+- Ticket lifecycle backend (`src/lib/tickets/*`) and its API routes:
+  - `POST /api/tickets` — issue a ticket (atomic per-service/day numbering)
+  - `GET /api/tickets` — list/filter tickets (for TV Display / Dashboard)
+  - `POST /api/tickets/call-next` — atomically claim the next WAITING
+    ticket for a counter (`FOR UPDATE SKIP LOCKED`, priority then FIFO)
+  - `POST /api/tickets/[id]/transition` — CANCELLED / SERVING / SKIPPED /
+    NO_SHOW / DONE, with row-locked check-then-write and an
+    owning-staff check
+  - Every mutation publishes a `ticket-event` on the `queue-updates`
+    Pusher channel and writes a `TicketEvent` audit row.
+  - Verified under concurrent load with a throwaway script: 40 parallel
+    ticket creations produced 40 unique numbers, and 40 parallel
+    call-next requests against the same counter each claimed a distinct
+    ticket — no duplicates, no double-claims.
 
-Not built yet: ticket-number generation API, Kiosk/Counter/TV pages, auth,
-and the actual Pusher `trigger()` calls wired into ticket mutations.
+Not built yet: Kiosk/Counter/TV pages and staff auth (the
+`staffId`/`counterId` fields are accepted directly in request bodies for
+now — see the `TODO` comments in the API routes).
 
 ## Getting started
 
