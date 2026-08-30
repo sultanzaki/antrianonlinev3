@@ -1,0 +1,170 @@
+// Queue Management System — MVP domain schema
+// Single organization, no multi-tenancy.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StaffRole {
+  ADMIN
+  STAFF
+}
+
+enum TicketStatus {
+  WAITING
+  CALLED
+  SERVING
+  DONE
+  SKIPPED
+  NO_SHOW
+  CANCELLED
+}
+
+enum TicketPriority {
+  NORMAL
+  PRIORITY
+}
+
+/// A type of service offered by the organization (e.g. "Pendaftaran", "Kasir").
+/// Each service has its own daily ticket numbering sequence and prefix.
+model Service {
+  id        String   @id @default(cuid())
+  name      String
+  prefix    String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  counters  CounterService[]
+  tickets   Ticket[]
+  sequences TicketSequence[]
+
+  @@map("services")
+}
+
+/// A physical/virtual counter (loket) where staff serve tickets.
+model Counter {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services      CounterService[]
+  sessions      CounterSession[]
+  ticketsCalled Ticket[]         @relation("TicketCounter")
+  events        TicketEvent[]
+
+  @@map("counters")
+}
+
+/// Which counters are able to serve which services (many-to-many).
+model CounterService {
+  counterId String
+  serviceId String
+
+  counter Counter @relation(fields: [counterId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([counterId, serviceId])
+  @@map("counter_services")
+}
+
+/// A staff/admin user account.
+model Staff {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         StaffRole @default(STAFF)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions      CounterSession[]
+  ticketsServed Ticket[]         @relation("TicketStaff")
+  events        TicketEvent[]
+
+  @@map("staff")
+}
+
+/// Tracks which staff is currently logged in at which counter.
+/// One active (endedAt = null) session per staff and per counter at a time.
+model CounterSession {
+  id        String    @id @default(cuid())
+  staffId   String
+  counterId String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  staff   Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  counter Counter @relation(fields: [counterId], references: [id], onDelete: Cascade)
+
+  @@map("counter_sessions")
+}
+
+/// Atomic per-service, per-day ticket number counter.
+/// Partitioning by `date` avoids any explicit "reset" job/race at midnight —
+/// a new day simply gets a new row, created on first use via upsert.
+model TicketSequence {
+  serviceId  String
+  date       DateTime @db.Date
+  lastNumber Int      @default(0)
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([serviceId, date])
+  @@map("ticket_sequences")
+}
+
+/// A single queue ticket issued to a customer.
+model Ticket {
+  id          String         @id @default(cuid())
+  number      String // display code, e.g. "A-014"
+  sequence    Int // raw number within the day, for ordering/generation
+  serviceId   String
+  status      TicketStatus   @default(WAITING)
+  priority    TicketPriority @default(NORMAL)
+  counterId   String?
+  staffId     String?
+  createdAt   DateTime       @default(now())
+  calledAt    DateTime?
+  servedAt    DateTime?
+  completedAt DateTime?
+  /// Optimistic concurrency guard for status transitions.
+  version     Int            @default(0)
+
+  service Service       @relation(fields: [serviceId], references: [id])
+  counter Counter?      @relation("TicketCounter", fields: [counterId], references: [id])
+  staff   Staff?        @relation("TicketStaff", fields: [staffId], references: [id])
+  events  TicketEvent[]
+
+  @@unique([serviceId, createdAt, sequence])
+  @@index([serviceId, status, createdAt])
+  @@index([status, counterId])
+  @@map("tickets")
+}
+
+/// Audit log of every ticket status transition, for debugging, reporting,
+/// and as the backing event stream for realtime broadcasts.
+model TicketEvent {
+  id         String        @id @default(cuid())
+  ticketId   String
+  fromStatus TicketStatus?
+  toStatus   TicketStatus
+  counterId  String?
+  staffId    String?
+  createdAt  DateTime      @default(now())
+
+  ticket  Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  counter Counter? @relation(fields: [counterId], references: [id])
+  staff   Staff?   @relation(fields: [staffId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_events")
+}
