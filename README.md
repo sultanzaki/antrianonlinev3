@@ -62,8 +62,31 @@ MVP in progress, built incrementally. Done so far:
     member's counter picker without a redeploy, since it's all just rows
     in Postgres now instead of `prisma/seed.ts`.
 
+- A shared design system (`src/app/globals.css` design tokens +
+  `src/components/ui/{Button,Card,Badge}.tsx`) applied across every page:
+  a blue accent color, semantic status colors (waiting/called/serving/
+  negative), and Geist Sans actually wired up (it was imported but never
+  applied). Specific UX passes:
+  - **Kiosk** — bigger touch targets, a colored prefix badge per
+    service, shows "N orang mengantre sebelum Anda" on the confirmation
+    screen, and auto-returns to the service picker after 15s (a public
+    kiosk needs to reset itself for the next customer, not wait for a
+    manual tap)
+  - **TV Display** — a clock/date header, a "baru saja dipanggil" recent
+    history list (for customers who missed hearing their number), and a
+    brief highlight animation on a counter's card when it calls a new
+    ticket
+  - **Counter Dashboard** — a live elapsed-time readout ("dipanggil 42
+    detik lalu"), a waiting-count badge for the counter's services, and
+    color-coded status badges. Fixed a staleness bug found while
+    screenshotting this: the waiting count showed 0 for a few seconds
+    after picking a counter because it only refreshed on the next 5s
+    poll tick — `select-counter` now triggers an immediate refetch.
+
 Not built yet: a way for a customer to cancel their own ticket from the
-Kiosk, and reporting/analytics on ticket history.
+Kiosk (deliberately out of scope — kiosks are walk-up-and-tap, no
+customer identity to check ownership against), and reporting/analytics
+on ticket history.
 
 ## Getting started
 

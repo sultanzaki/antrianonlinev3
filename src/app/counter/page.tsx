@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePolling } from "@/lib/hooks/use-polling";
 import { useQueueEvents } from "@/lib/pusher/use-queue-events";
-import { STATUS_LABELS } from "@/lib/tickets/labels";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { StatusBadge } from "@/components/ui/Badge";
 
 interface Session {
   staffId: string;
@@ -25,7 +27,16 @@ interface CurrentTicket {
   id: string;
   number: string;
   status: "CALLED" | "SERVING";
+  createdAt: string;
+  calledAt: string;
   service: { name: string };
+}
+
+function elapsedLabel(since: string, now: number): string {
+  const seconds = Math.max(0, Math.floor((now - new Date(since).getTime()) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) return `${seconds} detik`;
+  return `${minutes} menit ${seconds % 60} detik`;
 }
 
 export default function CounterPage() {
@@ -33,8 +44,15 @@ export default function CounterPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [counters, setCounters] = useState<CounterOption[]>([]);
   const [current, setCurrent] = useState<CurrentTicket | null>(null);
+  const [waitingCount, setWaitingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,13 +80,16 @@ export default function CounterPage() {
     }
   }, [session]);
 
+  // Not gated on session.counterId: the server derives the counter from the
+  // cookie, so this is safe to call right after select-counter succeeds too
+  // (before this component's own session state has re-rendered).
   const refreshCurrent = useCallback(async () => {
-    if (!session?.counterId) return;
     const res = await fetch("/api/tickets/current");
     if (!res.ok) return;
     const body = await res.json();
     setCurrent(body.ticket);
-  }, [session?.counterId]);
+    setWaitingCount(body.waitingCount ?? 0);
+  }, []);
 
   usePolling(refreshCurrent, 5_000);
   useQueueEvents(() => refreshCurrent());
@@ -87,6 +108,7 @@ export default function CounterPage() {
       return;
     }
     setSession((s) => (s ? { ...s, counterId: counter.id, counterName: counter.name } : s));
+    await refreshCurrent();
   }
 
   async function callNext() {
@@ -126,32 +148,34 @@ export default function CounterPage() {
   }
 
   if (!session) {
-    return <div className="flex min-h-screen items-center justify-center">Memuat...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted">
+        Memuat...
+      </div>
+    );
   }
 
   if (!session.counterId) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-zinc-50 px-4 dark:bg-black">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Pilih Loket, {session.name}
-        </h1>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
+        <h1 className="text-xl font-semibold text-foreground">Pilih Loket, {session.name}</h1>
+        {error && <p className="text-sm text-status-negative">{error}</p>}
         <div className="grid w-full max-w-sm grid-cols-1 gap-3">
           {counters.map((counter) => (
             <button
               key={counter.id}
               disabled={busy}
               onClick={() => selectCounter(counter)}
-              className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-medium text-zinc-900 hover:border-zinc-400 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+              className="rounded-xl border border-border bg-surface px-4 py-3 text-left text-sm font-medium text-foreground shadow-sm transition hover:border-brand disabled:opacity-50"
             >
               {counter.name}
-              <span className="block text-xs font-normal text-zinc-500">
+              <span className="block text-xs font-normal text-muted">
                 {counter.services.map((s) => s.name).join(", ") || "Tidak ada layanan"}
               </span>
             </button>
           ))}
           {counters.length === 0 && (
-            <p className="text-center text-sm text-zinc-500">Memuat loket...</p>
+            <p className="text-center text-sm text-muted">Memuat loket...</p>
           )}
         </div>
       </div>
@@ -159,93 +183,92 @@ export default function CounterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
+    <div className="min-h-screen bg-background px-4 py-10">
       <div className="mx-auto flex max-w-lg flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-medium text-zinc-900 dark:text-zinc-50">{session.name}</p>
-            <p className="text-sm text-zinc-500">{session.counterName ?? "Loket"}</p>
+            <p className="font-medium text-foreground">{session.name}</p>
+            <p className="text-sm text-muted">{session.counterName ?? "Loket"}</p>
           </div>
           <div className="flex items-center gap-4">
+            <span className="text-sm text-muted">
+              Menunggu: <span className="font-semibold text-foreground">{waitingCount}</span>
+            </span>
             {session.role === "ADMIN" && (
-              <Link href="/admin" className="text-sm text-zinc-500 underline">
+              <Link href="/admin" className="text-sm text-muted underline underline-offset-4">
                 Admin
               </Link>
             )}
-            <button onClick={logout} className="text-sm text-zinc-500 underline">
+            <button onClick={logout} className="text-sm text-muted underline underline-offset-4">
               Logout
             </button>
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-status-negative">{error}</p>}
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-950">
+        <Card className="p-8 text-center">
           {!current && (
             <>
-              <p className="text-zinc-500">Tidak ada tiket aktif</p>
-              <button
-                onClick={callNext}
-                disabled={busy}
-                className="mt-6 w-full rounded-md bg-zinc-900 py-3 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-              >
+              <p className="text-muted">Tidak ada tiket aktif</p>
+              {waitingCount === 0 && (
+                <p className="mt-1 text-xs text-muted">Belum ada pelanggan menunggu</p>
+              )}
+              <Button size="lg" onClick={callNext} disabled={busy} className="mt-6 w-full">
                 Panggil Berikutnya
-              </button>
+              </Button>
             </>
           )}
 
           {current && (
             <>
-              <p className="text-sm text-zinc-500">{current.service.name}</p>
-              <p className="mt-2 text-6xl font-bold text-zinc-900 dark:text-zinc-50">
+              <p className="text-sm text-muted">{current.service.name}</p>
+              <p className="mt-2 text-6xl font-bold tabular-nums text-foreground">
                 {current.number}
               </p>
-              <p className="mt-2 text-sm text-zinc-500">
-                Status: {STATUS_LABELS[current.status]}
-              </p>
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <StatusBadge status={current.status} />
+                <span className="text-xs text-muted">
+                  {current.status === "CALLED"
+                    ? `dipanggil ${elapsedLabel(current.calledAt, now)} lalu`
+                    : `dilayani selama ${elapsedLabel(current.calledAt, now)}`}
+                </span>
+              </div>
 
               <div className="mt-6 grid grid-cols-1 gap-2">
                 {current.status === "CALLED" && (
                   <>
-                    <button
-                      onClick={() => transition("SERVING")}
-                      disabled={busy}
-                      className="rounded-md bg-zinc-900 py-3 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-                    >
+                    <Button size="lg" onClick={() => transition("SERVING")} disabled={busy}>
                       Mulai Layani
-                    </button>
+                    </Button>
                     <div className="grid grid-cols-2 gap-2">
-                      <button
+                      <Button
+                        variant="secondary"
                         onClick={() => transition("SKIPPED")}
                         disabled={busy}
-                        className="rounded-md border border-zinc-300 py-2 text-sm text-zinc-700 hover:border-zinc-400 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300"
                       >
                         Lewati
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="secondary"
                         onClick={() => transition("NO_SHOW")}
                         disabled={busy}
-                        className="rounded-md border border-zinc-300 py-2 text-sm text-zinc-700 hover:border-zinc-400 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300"
                       >
                         Tidak Hadir
-                      </button>
+                      </Button>
                     </div>
                   </>
                 )}
 
                 {current.status === "SERVING" && (
-                  <button
-                    onClick={() => transition("DONE")}
-                    disabled={busy}
-                    className="rounded-md bg-zinc-900 py-3 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-                  >
+                  <Button size="lg" onClick={() => transition("DONE")} disabled={busy}>
                     Selesai
-                  </button>
+                  </Button>
                 )}
               </div>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

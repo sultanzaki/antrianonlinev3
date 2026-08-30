@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Pill } from "@/components/ui/Badge";
 
 interface Service {
   id: string;
@@ -69,13 +71,13 @@ export default function AdminServicesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Layanan</h1>
+      <h1 className="text-xl font-semibold text-foreground">Layanan</h1>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-status-negative">{error}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+      <div className="overflow-x-auto rounded-2xl border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-100 text-left text-zinc-500 dark:bg-zinc-900">
+          <thead className="bg-brand-muted text-left text-muted">
             <tr>
               <th className="px-4 py-2 font-medium">Nama</th>
               <th className="px-4 py-2 font-medium">Prefix</th>
@@ -85,14 +87,14 @@ export default function AdminServicesPage() {
           </thead>
           <tbody>
             {services.map((service) => (
-              <tr key={service.id} className="border-t border-zinc-200 dark:border-zinc-800">
+              <tr key={service.id} className="border-t border-border">
                 <td className="px-4 py-2">
                   <input
                     defaultValue={service.name}
                     onBlur={(e) =>
                       e.target.value !== service.name && update(service.id, { name: e.target.value })
                     }
-                    className="w-full bg-transparent"
+                    className="w-full bg-transparent text-foreground"
                   />
                 </td>
                 <td className="px-4 py-2">
@@ -102,24 +104,18 @@ export default function AdminServicesPage() {
                       e.target.value !== service.prefix &&
                       update(service.id, { prefix: e.target.value })
                     }
-                    className="w-16 bg-transparent"
+                    className="w-16 bg-transparent text-foreground"
                   />
                 </td>
                 <td className="px-4 py-2">
-                  <span
-                    className={
-                      service.isActive
-                        ? "rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900 dark:text-green-300"
-                        : "rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                    }
-                  >
+                  <Pill tone={service.isActive ? "positive" : "neutral"}>
                     {service.isActive ? "Aktif" : "Nonaktif"}
-                  </span>
+                  </Pill>
                 </td>
                 <td className="px-4 py-2 text-right">
                   <button
                     onClick={() => update(service.id, { isActive: !service.isActive })}
-                    className="text-xs text-zinc-500 underline"
+                    className="text-xs text-muted underline underline-offset-4"
                   >
                     {service.isActive ? "Nonaktifkan" : "Aktifkan"}
                   </button>
@@ -128,7 +124,7 @@ export default function AdminServicesPage() {
             ))}
             {services.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-zinc-500">
+                <td colSpan={4} className="px-4 py-6 text-center text-muted">
                   Belum ada layanan
                 </td>
               </tr>
@@ -139,36 +135,32 @@ export default function AdminServicesPage() {
 
       <form
         onSubmit={createService}
-        className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+        className="flex flex-wrap items-end gap-3 rounded-2xl border border-border p-4"
       >
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-foreground">
           Nama layanan
           <input
             required
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm"
             placeholder="Pendaftaran"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-foreground">
           Prefix
           <input
             required
             maxLength={4}
             value={newPrefix}
             onChange={(e) => setNewPrefix(e.target.value)}
-            className="w-24 rounded-md border border-zinc-300 px-3 py-2 text-sm uppercase dark:border-zinc-700 dark:bg-zinc-900"
+            className="w-24 rounded-lg border border-border bg-transparent px-3 py-2 text-sm uppercase"
             placeholder="A"
           />
         </label>
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-        >
+        <Button type="submit" disabled={busy}>
           Tambah Layanan
-        </button>
+        </Button>
       </form>
     </div>
   );

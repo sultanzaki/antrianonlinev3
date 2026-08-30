@@ -8,24 +8,21 @@ const NAV = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
-      <header className="border-b border-zinc-200 dark:border-zinc-800">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-          <span className="font-semibold text-zinc-900 dark:text-zinc-50">Admin</span>
+          <span className="font-semibold text-foreground">Admin</span>
           <nav className="flex gap-4 text-sm">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+                className="text-muted hover:text-foreground"
               >
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/counter"
-              className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-            >
+            <Link href="/counter" className="text-muted hover:text-foreground">
               Counter Dashboard
             </Link>
           </nav>

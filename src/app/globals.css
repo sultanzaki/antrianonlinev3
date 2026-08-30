@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+
+  --brand: #2563eb;
+  --brand-foreground: #ffffff;
+  --brand-muted: #eff6ff;
+
+  --status-waiting: #d97706;
+  --status-waiting-bg: #fef3c7;
+  --status-called: #2563eb;
+  --status-called-bg: #dbeafe;
+  --status-serving: #16a34a;
+  --status-serving-bg: #dcfce7;
+  --status-done: #64748b;
+  --status-done-bg: #f1f5f9;
+  --status-negative: #dc2626;
+  --status-negative-bg: #fee2e2;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+
+  --color-status-waiting: var(--status-waiting);
+  --color-status-waiting-bg: var(--status-waiting-bg);
+  --color-status-called: var(--status-called);
+  --color-status-called-bg: var(--status-called-bg);
+  --color-status-serving: var(--status-serving);
+  --color-status-serving-bg: var(--status-serving-bg);
+  --color-status-done: var(--status-done);
+  --color-status-done-bg: var(--status-done-bg);
+  --color-status-negative: var(--status-negative);
+  --color-status-negative-bg: var(--status-negative-bg);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #05070d;
+    --surface: #0f1420;
+    --foreground: #f1f5f9;
+    --muted: #94a3b8;
+    --border: #1e293b;
+
+    --brand: #3b82f6;
+    --brand-muted: #0b1e42;
+
+    --status-waiting-bg: #422006;
+    --status-called-bg: #0d2a5c;
+    --status-serving-bg: #0c2f1a;
+    --status-done-bg: #1e293b;
+    --status-negative-bg: #450a0a;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@keyframes flash-highlight {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 0%, transparent);
+  }
+  20% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--brand) 35%, transparent);
+  }
+}
+
+.animate-flash-highlight {
+  animation: flash-highlight 1.4s ease-out 2;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.25s ease-out;
 }
