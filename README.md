@@ -83,10 +83,30 @@ MVP in progress, built incrementally. Done so far:
     after picking a counter because it only refreshed on the next 5s
     poll tick — `select-counter` now triggers an immediate refetch.
 
-Not built yet: a way for a customer to cancel their own ticket from the
-Kiosk (deliberately out of scope — kiosks are walk-up-and-tap, no
-customer identity to check ownership against), and reporting/analytics
-on ticket history.
+- Analytics dashboard at `/admin/analytics` (also the new `/admin`
+  landing page), with a Hari ini / 7 hari / 30 hari range switch:
+  - Stat tiles: total tickets, average wait time (`calledAt -
+    createdAt`), average service time (`completedAt - servedAt`)
+  - Tickets per status (reusing the same status colors as
+    `StatusBadge` elsewhere), per service, per counter (with each
+    counter's own average service time)
+  - Busiest hour of day and a daily trend chart, both computed in the
+    org's timezone (`src/lib/tickets/dates.ts`) rather than server-local
+    or naive UTC
+  - `GET /api/admin/analytics?range=today|7d|30d` does the aggregation
+    in JS after one filtered `findMany` — simple and plenty fast at
+    MVP scale; would move to SQL `GROUP BY` if ticket volume ever
+    made that a bottleneck
+  - Verified against a week of synthetic historical tickets (varied
+    hours/days/statuses) in a browser, light and dark; caught and fixed
+    a real bug where the hour/day bar charts rendered as invisible
+    (percentage `height` on a flex child resolves against its parent's
+    `auto` height, not the flex container's own height, unless that
+    child is explicitly stretched to fill it)
+
+Deliberately out of scope: a way for a customer to cancel their own
+ticket from the Kiosk (it's walk-up-and-tap with no customer identity to
+check ownership against).
 
 ## Getting started
 
