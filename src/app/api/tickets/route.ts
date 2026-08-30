@@ -26,10 +26,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
+const TICKET_STATUSES = [
+  "WAITING",
+  "CALLED",
+  "SERVING",
+  "DONE",
+  "SKIPPED",
+  "NO_SHOW",
+  "CANCELLED",
+] as const;
+
 const listQuerySchema = z.object({
   serviceId: z.string().optional(),
+  // Comma-separated, e.g. "CALLED,SERVING"
   status: z
-    .enum(["WAITING", "CALLED", "SERVING", "DONE", "SKIPPED", "NO_SHOW", "CANCELLED"])
+    .string()
+    .transform((s) => s.split(","))
+    .pipe(z.array(z.enum(TICKET_STATUSES)))
     .optional(),
   counterId: z.string().optional(),
 });
@@ -47,8 +60,12 @@ export async function GET(request: NextRequest) {
   const tickets = await prisma.ticket.findMany({
     where: {
       ...(serviceId && { serviceId }),
-      ...(status && { status }),
+      ...(status && { status: { in: status } }),
       ...(counterId && { counterId }),
+    },
+    include: {
+      service: { select: { name: true, prefix: true } },
+      counter: { select: { name: true } },
     },
     orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
     take: 200,

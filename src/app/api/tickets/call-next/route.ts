@@ -1,27 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { NextResponse } from "next/server";
 import {
   callNextTicket,
   CounterNotFoundError,
   NoWaitingTicketError,
 } from "@/lib/tickets/call-next";
+import { getSession } from "@/lib/auth/current-staff";
 
-const callNextSchema = z.object({
-  counterId: z.string().min(1),
-  // TODO: derive from the authenticated staff session instead of the body
-  // once staff login exists.
-  staffId: z.string().min(1),
-});
-
-export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
-  const parsed = callNextSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+export async function POST() {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+  if (!session.counterId) {
+    return NextResponse.json({ error: "No counter selected for this session" }, { status: 400 });
   }
 
   try {
-    const ticket = await callNextTicket(parsed.data);
+    const ticket = await callNextTicket({ counterId: session.counterId, staffId: session.staffId });
     return NextResponse.json({ ticket });
   } catch (err) {
     if (err instanceof CounterNotFoundError) {

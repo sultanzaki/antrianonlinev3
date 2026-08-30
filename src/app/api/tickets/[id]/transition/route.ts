@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { transitionTicket, InvalidTransitionError } from "@/lib/tickets/transition";
+import { getSession } from "@/lib/auth/current-staff";
 
 const transitionSchema = z.object({
   toStatus: z.enum(["CANCELLED", "SERVING", "SKIPPED", "NO_SHOW", "DONE"]),
-  // TODO: derive from the authenticated staff session instead of the body
-  // once staff login exists.
-  staffId: z.string().min(1).optional(),
 });
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   const { id } = await params;
   const body = await request.json().catch(() => null);
   const parsed = transitionSchema.safeParse(body);
@@ -21,7 +24,11 @@ export async function POST(
   }
 
   try {
-    const ticket = await transitionTicket({ ticketId: id, ...parsed.data });
+    const ticket = await transitionTicket({
+      ticketId: id,
+      toStatus: parsed.data.toStatus,
+      staffId: session.staffId,
+    });
     return NextResponse.json({ ticket });
   } catch (err) {
     if (err instanceof InvalidTransitionError) {
