@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePolling } from "@/lib/hooks/use-polling";
 import { useQueueEvents } from "@/lib/pusher/use-queue-events";
@@ -165,9 +166,16 @@ export default function CounterPage() {
             <p className="font-medium text-zinc-900 dark:text-zinc-50">{session.name}</p>
             <p className="text-sm text-zinc-500">{session.counterName ?? "Loket"}</p>
           </div>
-          <button onClick={logout} className="text-sm text-zinc-500 underline">
-            Logout
-          </button>
+          <div className="flex items-center gap-4">
+            {session.role === "ADMIN" && (
+              <Link href="/admin" className="text-sm text-zinc-500 underline">
+                Admin
+              </Link>
+            )}
+            <button onClick={logout} className="text-sm text-zinc-500 underline">
+              Logout
+            </button>
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

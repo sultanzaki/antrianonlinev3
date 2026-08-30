@@ -46,10 +46,24 @@ MVP in progress, built incrementally. Done so far:
     polls every 10s and refreshes instantly on Pusher events
   - `/login` + `/counter` — staff login, counter picker, then call
     next / start serving / skip / no-show / done
+- Admin panel at `/admin` (ADMIN role only — `src/proxy.ts` redirects
+  STAFF to `/counter`, and every `/api/admin/*` route re-checks the role
+  server-side via `requireAdminSession`), covering the last "seed-only"
+  gap:
+  - `/admin/services` — create services, rename, change prefix, toggle
+    active
+  - `/admin/counters` — create counters, toggle active, assign which
+    services each counter serves (checkboxes, saved immediately)
+  - `/admin/staff` — create staff, change name/email/role/active status,
+    set a new password. An admin can't deactivate or demote their own
+    account (would lock everyone out).
+  - Changes take effect immediately — e.g. a new service appears on
+    `/kiosk` and a new counter-service assignment appears in a staff
+    member's counter picker without a redeploy, since it's all just rows
+    in Postgres now instead of `prisma/seed.ts`.
 
-Not built yet: an admin UI for managing services/counters/staff (currently
-only seedable via `prisma/seed.ts`), and a way for a customer to cancel
-their own ticket from the Kiosk.
+Not built yet: a way for a customer to cancel their own ticket from the
+Kiosk, and reporting/analytics on ticket history.
 
 ## Getting started
 
@@ -63,8 +77,10 @@ their own ticket from the Kiosk.
 4. Seed sample data: `npm run db:seed`
 5. Run the dev server: `npm run dev`
 
-Default seeded admin login: `admin@antrian.local` / `admin123` (change
-before any real deployment — this is dev-only seed data).
+Default seeded admin login: `admin@antrian.local` / `admin123` — change
+this password via `/admin/staff` before any real deployment (this is
+dev-only seed data, and the password has been shared in chat/commit
+history, so treat it as already public).
 
 ## Deploying (Vercel + Supabase)
 

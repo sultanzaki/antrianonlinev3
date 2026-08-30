@@ -12,9 +12,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (request.nextUrl.pathname.startsWith("/admin") && session.role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/counter", request.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/counter/:path*"],
+  matcher: ["/counter/:path*", "/admin/:path*"],
 };
