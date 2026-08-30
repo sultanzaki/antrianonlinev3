@@ -66,6 +66,39 @@ their own ticket from the Kiosk.
 Default seeded admin login: `admin@antrian.local` / `admin123` (change
 before any real deployment — this is dev-only seed data).
 
+## Deploying (Vercel + Supabase)
+
+Realtime uses Pusher (not a self-hosted socket server), so this app runs
+fine on Vercel's serverless functions — no persistent process needed.
+
+1. **Database**: create a [Supabase](https://supabase.com) project, then
+   from its dashboard's **Connect** button grab two connection strings:
+   - **Transaction pooler** (port 6543) → set as `DATABASE_URL` in Vercel,
+     with `?pgbouncer=true` appended. This is what the app uses at
+     runtime; it's IPv4 and safe for many short-lived serverless
+     invocations.
+   - **Direct connection** (port 5432) → keep locally as `DIRECT_URL`,
+     used only to run migrations from a machine with real network access
+     to Postgres (Vercel's build step does not run migrations).
+2. **Env vars**: in the Vercel project's Settings → Environment
+   Variables, set `DATABASE_URL` and `AUTH_SECRET` (same value
+   requirements as `.env.example`). Pusher vars are optional — the app
+   polls instead of erroring if they're unset. `DIRECT_URL` is only used
+   locally for migrations, not by the deployed app.
+3. **Schema**: from a machine with Postgres network access, run
+   migrations against the direct connection by pointing `DATABASE_URL`
+   at it for just that command (`prisma.config.ts` always reads
+   `DATABASE_URL`, so this swaps it in temporarily):
+   `DATABASE_URL="$DIRECT_URL" npx prisma migrate deploy`, then
+   `DATABASE_URL="$DIRECT_URL" npx prisma db seed` for sample data.
+4. Deploy (push to the repo's default branch, or trigger a deploy from
+   the Vercel dashboard).
+
+`@prisma/adapter-pg` doesn't cache named prepared statements unless you
+opt in, so it's already safe against a transaction-mode pooler without
+extra code — `pgbouncer=true` is still worth adding since Supabase's own
+docs point at it as the standard, documented setting.
+
 ## Scripts
 
 - `npm run dev` / `build` / `start` — Next.js app
